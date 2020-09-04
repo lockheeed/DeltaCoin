@@ -8,7 +8,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7"
+__version__ = "BETA 1.7.1"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -229,7 +229,7 @@ class Blockchain(object):
             time.sleep(5)
 
     @staticmethod
-    def gen_target(difficulty, place_size = 12, init_zeros_count = 2):
+    def gen_target(difficulty, place_size = 12, init_zeros_count = 3):
         if difficulty > 10 * place_size:
             difficulty = 10 * place_size
 
