@@ -8,7 +8,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7.5"
+__version__ = "BETA 1.7.6"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -201,7 +201,8 @@ class Blockchain(object):
 
     def __checking_txn_blocks(self):
         old_block_index = self.block["index"]
-        while old_block_index == self.block["index"]:
+        current_node_txn_block = self.nodes.get_txn_block()[0]
+        while old_block_index == current_node_txn_block:
             current_node_txn_block = self.nodes.get_txn_block()[0]
             if not self.is_the_same_txn_blocks(self.original_txn_block, current_node_txn_block):
                 self.already_decided = True
