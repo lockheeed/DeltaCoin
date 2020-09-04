@@ -8,7 +8,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7.4"
+__version__ = "BETA 1.7.5"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -521,7 +521,6 @@ if __name__ == '__main__':
     blockchain.sync_blockchain()
 
     miner_address = input(" [ * ] Enter your DeltaCoin address: ")
-    broken_block = None
 
     print(" ")
     while True:
@@ -533,10 +532,9 @@ if __name__ == '__main__':
             if length > len(blockchain.chain):
                 for i in range(blockchain.last_block["index"] + 1, length):
                     blockchain.chain.append(nodes.get_block(i))
-            if type(txn_block) == list and broken_block != txn_block:
+            if type(txn_block) == list:
                 print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_y + Color.bold}New transaction block has been founded! Starting mining process...{Color.clear}")
-                if not blockchain.new_block(txn_block, target, miner_address):
-                    broken_block = txn_block
+                blockchain.new_block(txn_block, target, miner_address)
                 break
 
             else:
