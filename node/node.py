@@ -9,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7.8"
+__version__ = "BETA 1.7.9"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$

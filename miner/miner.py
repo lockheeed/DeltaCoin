@@ -8,7 +8,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7.8"
+__version__ = "BETA 1.7.9"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -193,8 +193,6 @@ class Blockchain(object):
         if self.already_decided:
             print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_y + Color.bold}Block already decided! Stoping mining process... {Color.clear}")
             self.pow_in_work = False
-            new_block = self.nodes.get_block(self.block["index"])
-            self.chain.append(new_block)
             return False
         self.block["hash"] = self.hash_block(self.block)
         return True
