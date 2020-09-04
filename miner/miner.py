@@ -8,7 +8,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7.1"
+__version__ = "BETA 1.7.2"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -449,7 +449,7 @@ class Nodes(object):
                 print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_g + Color.bold}Node accepted block solution!{Color.clear}")
                 return True
             else:
-                print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node rejected block solution! {res}{Color.clear}")
+                print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node rejected block solution! {response.text}{Color.clear}")
                 return False
         except requests.exceptions.ConnectionError:
             print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
