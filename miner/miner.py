@@ -8,7 +8,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7.7"
+__version__ = "BETA 1.7.8"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -201,10 +201,10 @@ class Blockchain(object):
 
     def __checking_txn_blocks(self):
         old_block_index = self.block["index"]
-        current_block_index = self.nodes.get_blockchain_length() - 1
+        current_block_index = self.nodes.get_blockchain_length()
         while old_block_index == current_block_index:
             time.sleep(blockchain.requests_pause)
-            current_block_index = self.nodes.get_blockchain_length() - 1
+            current_block_index = self.nodes.get_blockchain_length()
         self.already_decided = True
 
     def __mining_speed(self):
