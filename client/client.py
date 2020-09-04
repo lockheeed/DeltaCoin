@@ -46,13 +46,12 @@ class Updater(object):
     def update():
         print(Color.bold + " [ ~ ] Checking for updates...", end="", flush=True)
         url = "https://raw.githubusercontent.com/lockheeed/DeltaCoin/master/version"
-        rep = "https://github.com/lockheeed/DeltaCoin"
         try:
             if requests.get(url, timeout=7).text.strip() == __version__:
                 print(Color.f_g + "UP TO DATE" + Color.clear)
             else:
                 print(Color.f_r + "UPDATE NEEDED" + Color.clear)
-                if subprocess.run(f"git pull {rep}") == 0:
+                if subprocess.run(["git", "pull"]).returncode == 0:
                     print(Color.f_g + "\n [ + ] Update completed! Now you need to restart this script!" + Color.clear)
                     exit()
 
