@@ -8,7 +8,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7.2"
+__version__ = "BETA 1.7.3"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -507,34 +507,37 @@ class Nodes(object):
         else:
             self.nodes = {}
 
-if platform.system() == "Windows":
-    os.system("cls")
-elif platform.system() == "Linux":
-    os.system("clear")
-print(banner)
+if __name__ == '__main__':
+    if platform.system() == "Windows":
+        os.system("cls")
+    elif platform.system() == "Linux":
+        os.system("clear")
 
-nodes = Nodes()
-blockchain = Blockchain(nodes)
-blockchain.sync_blockchain()
+    print(banner)
+    Updater.update()
+    nodes = Nodes()
+    
+    blockchain = Blockchain(nodes)
+    blockchain.sync_blockchain()
 
-miner_address = input(" [ * ] Enter your DeltaCoin address: ")
-broken_block = None
+    miner_address = input(" [ * ] Enter your DeltaCoin address: ")
+    broken_block = None
 
-print(" ")
-while True:
-    print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] Trying to get transaction block...")
-
+    print(" ")
     while True:
-        txn_block, target = nodes.get_txn_block()
-        length = nodes.get_blockchain_length()
-        if length > len(blockchain.chain):
-            for i in range(blockchain.last_block["index"] + 1, length):
-                blockchain.chain.append(nodes.get_block(i))
-        if type(txn_block) == list and broken_block != txn_block:
-            print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_y + Color.bold}New transaction block has been founded! Starting mining process...{Color.clear}")
-            if not blockchain.new_block(txn_block, target, miner_address):
-                broken_block = txn_block
-            break
+        print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] Trying to get transaction block...")
 
-        else:
-            time.sleep(blockchain.requests_pause)
+        while True:
+            txn_block, target = nodes.get_txn_block()
+            length = nodes.get_blockchain_length()
+            if length > len(blockchain.chain):
+                for i in range(blockchain.last_block["index"] + 1, length):
+                    blockchain.chain.append(nodes.get_block(i))
+            if type(txn_block) == list and broken_block != txn_block:
+                print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_y + Color.bold}New transaction block has been founded! Starting mining process...{Color.clear}")
+                if not blockchain.new_block(txn_block, target, miner_address):
+                    broken_block = txn_block
+                break
+
+            else:
+                time.sleep(blockchain.requests_pause)

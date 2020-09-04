@@ -9,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7.2"
+__version__ = "BETA 1.7.3"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -658,7 +658,6 @@ if __name__ == '__main__':
         os.system("clear")
 
     print(banner)
-
     Updater.update()
 
     ans = input(f" [ ~ ] Your external IP is {socket.gethostbyname(socket.gethostname())}. Is is correct (y/n)? >> ")
