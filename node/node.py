@@ -9,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.8"
+__version__ = "BETA 1.8.1"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -442,9 +442,6 @@ class Blockchain(object):
             is_valid, utxo, difficulty = Blockchain.is_a_valid_blockchain(blockchain)
             if is_valid:
                 for block in flow["txn_blocks"]:
-                    if len(block) == 0:
-                        return [], {}, {}, 0
-
                     for txn in block:
                         if not Blockchain.is_a_valid_txn(txn, utxo):
                             return [], {}, {}, 0
@@ -548,7 +545,7 @@ class Nodes(object):
             try:
                 if uuid != exception:
                     requests.post(f"http://{host}/new_txn", json={"txn":txn, "node":self.uuid}, timeout=1.5)
-            except requests.exceptions.ConnectTimeout:
+            except requests.exceptions.ConnectionError:
                 del self.nodes[uuid]
 
     def send_block(self, block, exception=None):
@@ -556,7 +553,7 @@ class Nodes(object):
             try:
                 if uuid != exception:
                     requests.post(f"http://{host}/new_block", json={"block":block, "node":self.uuid}, timeout=1.5)
-            except requests.exceptions.ConnectTimeout:
+            except requests.exceptions.ConnectionError:
                 del self.nodes[uuid]
 
     def load(self):
