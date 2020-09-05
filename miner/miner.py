@@ -8,7 +8,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7.9"
+__version__ = "BETA 1.8"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -114,7 +114,7 @@ class Blockchain(object):
         self.utxo = {}
         self.difficulty = 0
 
-        self.fixed_award = 50
+        self.fixed_award = 12
 
         self.requests_pause = 10
         self.already_decided = False
@@ -225,12 +225,12 @@ class Blockchain(object):
             time.sleep(5)
 
     @staticmethod
-    def gen_target(difficulty, place_size = 12, init_zeros_count = 4):
+    def gen_target(difficulty, place_size = 12, init_zeros_count = 5):
         if difficulty > 10 * place_size:
             difficulty = 10 * place_size
 
-        if difficulty < 1:
-            difficulty = 1
+        if difficulty < 0:
+            difficulty = 0
 
         if difficulty > place_size * 10:
             return None
@@ -304,6 +304,22 @@ class Blockchain(object):
         return sum
 
     @staticmethod
+    def utxo_recalculation(txn, utxo):
+        try:
+            if txn["sender"] != "COINFACTORY":
+                if Blockchain.is_a_valid_txn(txn, utxo):
+                    for inp in txn["inputs"]:
+                        del utxo[txn["sender"]][utxo[txn["sender"]].index(inp)]
+                    for inputs, address in utxo.copy().items():
+                        if len(inputs) == 0:
+                            del utxo[txn["sender"]]
+                else:
+                    return False
+            return True
+        except KeyError:
+            return False
+
+    @staticmethod
     def is_a_valid_blockchain(blockchain):
         utxo = {}
         scaler = ScalingTool(0, 10, 0, 9)
@@ -326,16 +342,10 @@ class Blockchain(object):
                     return False, {}, 0
 
                 for txn in block["txns"]:
-                    if txn["sender"] != "COINFACTORY":
-                        if Blockchain.is_a_valid_txn(txn, utxo):
-                            for inp in txn["inputs"]:
-                                del utxo[txn["sender"]][utxo[txn["sender"]].index(inp)]
-                            for inputs, address in utxo.copy().items():
-                                if len(inputs) == 0:
-                                    del utxo[txn["sender"]]
-                        else:
-                            return False, {}, 0
+                    if not Blockchain.utxo_recalculation(txn, utxo):
+                        return False, {}, 0
 
+                for txn in block["txns"]:
                     for element in txn["outputs"]:
                         if type(element) == dict:
                             if element["recipient"] not in utxo:
@@ -343,7 +353,7 @@ class Blockchain(object):
                             else:
                                 utxo[element["recipient"]].append([element["amount"], block["index"], txn["hash"]])
 
-                if (block["index"] + 1) % 5 == 0:
+                if (block["index"]) % 5 == 0:
                     difficulty = Blockchain.difficulty_recalculation(blockchain, scaler, difficulty, 5)
 
         return True, utxo, difficulty
@@ -424,7 +434,7 @@ class Nodes(object):
             txn_block = response["txn_block"]
             target = response["target"]
         except requests.exceptions.ConnectionError:
-            print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
+            print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.get_txn_block()
 
@@ -434,7 +444,7 @@ class Nodes(object):
         try:
             block = requests.get(f"http://{self.node}/get_block", params={"index":index}).json()["block"]
         except requests.exceptions.ConnectionError:
-            print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
+            print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.get_block(index)
         return block
@@ -449,7 +459,7 @@ class Nodes(object):
                 print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node rejected block solution! {response.text}{Color.clear}")
                 return False
         except requests.exceptions.ConnectionError:
-            print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
+            print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.send_block(block)
 
@@ -457,7 +467,7 @@ class Nodes(object):
         try:
             return requests.get(f"http://{self.node}/get_blockchain").json()["blockchain"]
         except requests.exceptions.ConnectionError:
-            print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
+            print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.get_blockchain()
 
@@ -465,11 +475,12 @@ class Nodes(object):
         try:
             return requests.get(f"http://{self.node}/get_blockchain_length").json()["length"]
         except requests.exceptions.ConnectionError:
-            print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
+            print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.get_blockchain_length()
 
     def choice_the_node(self):
+        self.load()
         for node in self.nodes.copy():
             try:
                 requests.get(f"http://{node}/get_blockchain_length").json()["length"]
@@ -480,7 +491,7 @@ class Nodes(object):
             print(Color.f_r + "\n [ ! ] All nodes are dead! Update your nodes.json!" + Color.clear)
             exit()
 
-        print(Color.f_y + " [ ~ ] Available nodes list:" + Color.clear)
+        print(Color.f_y + "\n [ ~ ] Available nodes list:" + Color.clear)
         for number, host in enumerate(self.nodes):
             print(f"\t{number}: {host}")
 

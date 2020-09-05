@@ -7,7 +7,7 @@ from random import choice
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.7.9"
+__version__ = "BETA 1.8"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -113,7 +113,7 @@ class Node(object):
         try:
             response = requests.post(f"http://{self.node}/new_txn", json={"txn":data, "node":"client"})
         except requests.exceptions.ConnectionError:
-            print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
+            print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.send_transaction(sender, recipient, amount_with_fee, return_value, fee, inputs, public, private)
 
@@ -165,6 +165,7 @@ class Node(object):
         return [], 0
 
     def choice_the_node(self):
+        self.load()
         for node in self.nodes.copy():
             try:
                 requests.get(f"http://{node}/get_blockchain_length").json()["length"]
@@ -175,7 +176,7 @@ class Node(object):
             print(Color.f_r + "\n [ ! ] All nodes are dead! Update your nodes.json!" + Color.clear)
             exit()
 
-        print(Color.f_y + " [ ~ ] Available nodes list:" + Color.clear)
+        print(Color.f_y + "\n [ ~ ] Available nodes list:" + Color.clear)
         for number, host in enumerate(self.nodes):
             print(f"\t{number}: {host}")
 
@@ -186,6 +187,7 @@ class Node(object):
             self.node = choice(self.nodes)
 
         print(Color.f_g + f" [ + ] Chosen node is {self.node}\n" + Color.clear)
+        return True
 
     def load(self):
         if not os.path.isdir("cache"):
@@ -227,7 +229,7 @@ if __name__ == '__main__':
                 amount_with_fee = amount - fee
                 return_value = sum - amount
 
-                if inputs == {}:
+                if sum < amount:
                     print("\n [ - ] Извините, но кажется вы БОМЖАРИК!")
                     continue
 
