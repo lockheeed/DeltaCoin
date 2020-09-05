@@ -9,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.8.1"
+__version__ = "BETA 1.8.2"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -338,18 +338,23 @@ class Blockchain(object):
         for block in blockchain:
             if block['index'] > 0:
                 if block["index"] != blockchain.index(block):
+                    # print("index")
                     return False, {}, 0
 
                 if int(block["hash"], 16) > int(Blockchain.gen_target(difficulty), 16):
+                    # print("difficult")
                     return False, {}, 0
 
                 if Blockchain.get_count_of_coinfactory_txns(block["txns"]) > 1 or Blockchain.get_fee(block["txns"]) + Blockchain().fixed_award < Blockchain.get_coinfactory_out(block["txns"]):
+                    # print("coinfactory")
                     return False, {}, 0
 
                 if block["hash"] != Blockchain.hash_block(block):
+                    # print("hash")
                     return False, {}, 0
 
                 if block["merkle_root"] != Blockchain.get_merkle_root(block["txns"]):
+                    # print("merkle")
                     return False, {}, 0
 
                 for txn in block["txns"]:
@@ -444,10 +449,12 @@ class Blockchain(object):
                 for block in flow["txn_blocks"]:
                     for txn in block:
                         if not Blockchain.is_a_valid_txn(txn, utxo):
+                            # print("invalid")
                             return [], {}, {}, 0
 
                 for txn in flow["not_distributed_txns"]:
                     if not Blockchain.is_a_valid_txn(txn, utxo):
+                        # print("invalid")
                         return [], {}, {}, 0
 
                 return blockchain, flow, utxo, difficulty
