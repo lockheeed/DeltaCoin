@@ -539,7 +539,7 @@ class Nodes(object):
                 node_uuid = requests.post(f"http://{host}/new_node", json={"uuid":self.uuid, "port":self.port}, timeout=1.5).text
                 if len(node_uuid) == 32 and node_uuid not in self.nodes:
                     self.nodes[node_uuid] = host
-            except requests.exceptions.ConnectTimeout:
+            except requests.exceptions.ConnectionError:
                 pass
         del self.nodes["nodes"]
 
