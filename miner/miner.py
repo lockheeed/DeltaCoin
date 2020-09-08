@@ -1,6 +1,7 @@
 from flask import Flask, Response, request
-import json, time, hashlib, requests, threading, random, os, platform, datetime, subprocess
+import json, time, hashlib, requests, threading, random, os, platform, datetime, subprocess, multiprocessing
 from random import choice
+from sys import exit
 
 import os, hashlib, binascii, base58
 from ecdsa import SigningKey, VerifyingKey
@@ -8,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.8.3"
+__version__ = "BETA 1.9"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -117,8 +118,19 @@ class Blockchain(object):
         self.fixed_award = 12
 
         self.requests_pause = 10
-        self.already_decided = False
         self.pow_in_work = False
+        self.current_block_length = 0
+
+        self.cores_count = 1
+
+    def set_cores_count(self):
+        self.cores_count = int(input(f" [ * ] Enter prefered cores count ( 0 - {multiprocessing.cpu_count()} ): "))
+        if self.cores_count > multiprocessing.cpu_count():
+            self.cores_count = multiprocessing.cpu_count()
+
+    def start_threads(self):
+        threading.Thread(target=self.__mining_speed, daemon=True).start()
+        threading.Thread(target=self.__get_current_block_length, daemon=True).start()
 
     def sync_blockchain(self):
         print(" [ ~ ] Synchronizating with nodes...", end="", flush=True)
@@ -182,45 +194,82 @@ class Blockchain(object):
             "sign":"COINFACTORY"
                }
 
+    def hash_core(self, start_proof, step, pipe):
+        self.block["proof"] = start_proof
+        if start_proof == 0:
+            while int(self.hash_block(self.block), 16) > int(self.target, 16):
+                self.block["proof"] += step
+                if self.block["proof"] % (step * 300) == 0:
+                    pipe.send(1)
+            pipe.send(str(self.block["proof"]) + "/" + self.hash_block(self.block))
+        else:
+            while int(self.hash_block(self.block), 16) > int(self.target, 16):
+                self.block["proof"] += step
+            pipe.send(str(self.block["proof"]) + "/" + self.hash_block(self.block))
+
+
     def pow(self):
+        processes_list = []
+        parent, child = multiprocessing.Pipe()
+
+        for i in range(self.cores_count):
+            processes_list.append(multiprocessing.Process(target=self.hash_core, args=(i, self.cores_count, child), daemon=True))
+
         self.pow_in_work = True
-        self.already_decided = False
-        threading.Thread(target=self.__mining_speed, daemon=True).start()
-        threading.Thread(target=self.__checking_txn_blocks ,daemon=True).start()
-        while int(self.hash_block(self.block), 16) > int(self.target, 16) and not self.already_decided:
-            self.block["proof"] += 1
-        self.pow_in_work = False
-        if self.already_decided:
+        self.current_block_length = self.nodes.get_blockchain_length()
+
+        for proc in processes_list:
+            proc.start()
+
+        while self.current_block_length == len(self.chain):
+            data = parent.recv()
+            if not self.pow_in_work:
+                for proc in processes_list:
+                    proc.terminate()
+                return False
+
+            if data == 1:
+                self.block["proof"] += 300 * self.cores_count
+            else:
+                self.block["proof"] = int(data.split("/")[0])
+                self.block["hash"] = data.split("/")[1]
+                self.pow_in_work = False
+                break
+
+        for proc in processes_list:
+            proc.terminate()
+
+        if self.current_block_length > len(self.chain):
             print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_y + Color.bold}Block already decided! Stoping mining process... {Color.clear}")
-            self.pow_in_work = False
             return False
-        self.block["hash"] = self.hash_block(self.block)
+        elif self.current_block_length < len(self.chain):
+            return False
         return True
 
-    def __checking_txn_blocks(self):
-        old_block_index = self.block["index"]
-        current_block_index = self.nodes.get_blockchain_length()
-        while old_block_index == current_block_index:
-            time.sleep(blockchain.requests_pause)
-            current_block_index = self.nodes.get_blockchain_length()
-        self.already_decided = True
+    def __get_current_block_length(self):
+        while True:
+            self.current_block_length = self.nodes.get_blockchain_length()
+            time.sleep(self.requests_pause)
 
     def __mining_speed(self):
-        old_block_index = self.block["index"]
-        last_proof_value = 0
-        while old_block_index == self.block["index"]:
-            if self.block["proof"] != 0:
-                speed = (self.block["proof"] - last_proof_value) / 5
-                last_proof_value = self.block["proof"]
+        while True:
+            last_proof_value = 0
+            while self.pow_in_work:
+                if self.block["proof"] > last_proof_value:
+                    speed = (self.block["proof"] - last_proof_value) / 5
+                    last_proof_value = self.block["proof"]
 
-                if speed < 1000:
-                    out = str(round(speed, 3)) + " H/sec"
-                if speed >= 1000:
-                    out = str(round(speed / 1000, 3)) + " KH/sec"
-                if speed >= 1000000:
-                    out = str(round(speed / 1000000, 3)) + " MH/sec"
-                if self.pow_in_work:
-                    print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] Current mining speed is {out}")
+                    if speed < 1000:
+                        out = str(round(speed, 3)) + " H/sec"
+                    if speed >= 1000:
+                        out = str(round(speed / 1000, 3)) + " KH/sec"
+                    if speed >= 1000000:
+                        out = str(round(speed / 1000000, 3)) + " MH/sec"
+                    if self.pow_in_work:
+                        print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] Current mining speed is {out}")
+                else:
+                    last_proof_value = 0
+                time.sleep(5)
 
             time.sleep(5)
 
@@ -354,7 +403,7 @@ class Blockchain(object):
                                 utxo[element["recipient"]].append([element["amount"], block["index"], txn["hash"]])
 
                 if (block["index"]) % 5 == 0:
-                    difficulty = Blockchain.difficulty_recalculation(blockchain, scaler, difficulty, 5)
+                    difficulty = Blockchain.difficulty_recalculation(blockchain[:block["index"] + 1], scaler, difficulty, 5)
 
         return True, utxo, difficulty
 
@@ -434,6 +483,7 @@ class Nodes(object):
             txn_block = response["txn_block"]
             target = response["target"]
         except requests.exceptions.ConnectionError:
+            blockchain.pow_in_work = False
             print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.get_txn_block()
@@ -444,6 +494,7 @@ class Nodes(object):
         try:
             block = requests.get(f"http://{self.node}/get_block", params={"index":index}).json()["block"]
         except requests.exceptions.ConnectionError:
+            blockchain.pow_in_work = False
             print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.get_block(index)
@@ -459,6 +510,7 @@ class Nodes(object):
                 print(f" [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node rejected block solution! {response.text}{Color.clear}")
                 return False
         except requests.exceptions.ConnectionError:
+            blockchain.pow_in_work = False
             print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.send_block(block)
@@ -467,6 +519,7 @@ class Nodes(object):
         try:
             return requests.get(f"http://{self.node}/get_blockchain").json()["blockchain"]
         except requests.exceptions.ConnectionError:
+            blockchain.pow_in_work = False
             print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.get_blockchain()
@@ -475,6 +528,7 @@ class Nodes(object):
         try:
             return requests.get(f"http://{self.node}/get_blockchain_length").json()["length"]
         except requests.exceptions.ConnectionError:
+            blockchain.pow_in_work = False
             print(f"\n [ {Color.bold + datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S') + Color.clear} ] {Color.f_r + Color.bold}Node ({self.node}) is down! {Color.clear}")
             if self.choice_the_node():
                 return self.get_blockchain_length()
@@ -483,8 +537,8 @@ class Nodes(object):
         self.load()
         for node in self.nodes.copy():
             try:
-                requests.get(f"http://{node}/get_blockchain_length").json()["length"]
-            except requests.exceptions.ConnectionError:
+                requests.get(f"http://{node}/get_blockchain_length", timeout=1).json()["length"]
+            except:
                 self.nodes.remove(node)
 
         if len(self.nodes) == 0:
@@ -527,8 +581,10 @@ if __name__ == '__main__':
 
     blockchain = Blockchain(nodes)
     blockchain.sync_blockchain()
+    blockchain.start_threads()
 
     miner_address = input(" [ * ] Enter your DeltaCoin address: ")
+    blockchain.set_cores_count()
 
     print(" ")
     while True:

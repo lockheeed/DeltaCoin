@@ -7,7 +7,7 @@ from random import choice
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.8.3"
+__version__ = "BETA 1.9"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -168,8 +168,8 @@ class Node(object):
         self.load()
         for node in self.nodes.copy():
             try:
-                requests.get(f"http://{node}/get_blockchain_length").json()["length"]
-            except requests.exceptions.ConnectionError:
+                requests.get(f"http://{node}/get_blockchain_length", timeout=1).json()["length"]
+            except:
                 self.nodes.remove(node)
 
         if len(self.nodes) == 0:

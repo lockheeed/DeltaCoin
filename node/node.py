@@ -9,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.8.3"
+__version__ = "BETA 1.9"
 
 banner = f"""
   /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
@@ -118,10 +118,10 @@ class Blockchain(object):
 
         self.nodes = nodes
 
-        self.k = 1
         self.difficulty = 0
-
         self.scaler = ScalingTool(0, 10, 0, 9)
+
+        self.lock = threading.Lock()
 
         threading.Thread(target=self.__distributor, daemon=True).start()
 
@@ -145,7 +145,7 @@ class Blockchain(object):
                     self.difficulty = 0
 
                     self.make_genesis_block()
-                    self.make_dummy_txn_blocks(40)
+                    self.make_dummy_txn_blocks(50)
                     print(Color.f_g + "SUCCESSFUL" + Color.clear)
                 else:
                     exit()
@@ -335,26 +335,22 @@ class Blockchain(object):
         utxo = {}
         scaler = ScalingTool(0, 10, 0, 9)
         difficulty = 0
+
         for block in blockchain:
             if block['index'] > 0:
                 if block["index"] != blockchain.index(block):
-                    # print("index")
                     return False, {}, 0
 
                 if int(block["hash"], 16) > int(Blockchain.gen_target(difficulty), 16):
-                    # print("difficult")
                     return False, {}, 0
 
                 if Blockchain.get_count_of_coinfactory_txns(block["txns"]) > 1 or Blockchain.get_fee(block["txns"]) + Blockchain().fixed_award < Blockchain.get_coinfactory_out(block["txns"]):
-                    # print("coinfactory")
                     return False, {}, 0
 
                 if block["hash"] != Blockchain.hash_block(block):
-                    # print("hash")
                     return False, {}, 0
 
                 if block["merkle_root"] != Blockchain.get_merkle_root(block["txns"]):
-                    # print("merkle")
                     return False, {}, 0
 
                 for txn in block["txns"]:
@@ -370,7 +366,7 @@ class Blockchain(object):
                                 utxo[element["recipient"]].append([element["amount"], block["index"], txn["hash"]])
 
                 if (block["index"]) % 5 == 0:
-                    difficulty = Blockchain.difficulty_recalculation(blockchain, scaler, difficulty, 5)
+                    difficulty = Blockchain.difficulty_recalculation(blockchain[:block["index"] + 1], scaler, difficulty, 5)
 
         return True, utxo, difficulty
 
@@ -449,12 +445,10 @@ class Blockchain(object):
                 for block in flow["txn_blocks"]:
                     for txn in block:
                         if not Blockchain.is_a_valid_txn(txn, utxo):
-                            # print("invalid")
                             return [], {}, {}, 0
 
                 for txn in flow["not_distributed_txns"]:
                     if not Blockchain.is_a_valid_txn(txn, utxo):
-                        # print("invalid")
                         return [], {}, {}, 0
 
                 return blockchain, flow, utxo, difficulty
@@ -604,52 +598,53 @@ def new_txn():
 
 @app.route('/new_block', methods=['POST'])
 def new_block():
-    data = request.get_json()
-    block = data['block']
-    node = data['node']
+    with blockchain.lock:
+        data = request.get_json()
+        block = data['block']
+        node = data['node']
 
-    #timestamp
+        #timestamp
 
-    if int(block["hash"], 16) > int(Blockchain.gen_target(blockchain.difficulty), 16):
-        return Response("Invalid block target!", status=400)
+        if block["index"] != blockchain.last_block["index"] + 1:
+            return Response("Invalid index!", status=400)
 
-    if Blockchain.get_count_of_coinfactory_txns(block["txns"]) > 1 or Blockchain.get_fee(block["txns"]) + blockchain.fixed_award < Blockchain.get_coinfactory_out(block["txns"]):
-        return Response("Invalid COINFACTORY txns!", status=400)
+        if int(block["hash"], 16) > int(Blockchain.gen_target(blockchain.difficulty), 16):
+            return Response("Invalid block target!", status=400)
 
-    if block["index"] != blockchain.last_block["index"] + 1:
-        return Response("Invalid index!", status=400)
+        if Blockchain.get_count_of_coinfactory_txns(block["txns"]) > 1 or Blockchain.get_fee(block["txns"]) + blockchain.fixed_award < Blockchain.get_coinfactory_out(block["txns"]):
+            return Response("Invalid COINFACTORY txns!", status=400)
 
-    if block["hash"] != blockchain.hash_block(block):
-        return Response("Invalid block hash!", status=400)
+        if block["hash"] != blockchain.hash_block(block):
+            return Response("Invalid block hash!", status=400)
 
-    if block["merkle_root"] != blockchain.get_merkle_root(block["txns"]):
-        return Response("Invalid merkle root!", status=400)
+        if block["merkle_root"] != blockchain.get_merkle_root(block["txns"]):
+            return Response("Invalid merkle root!", status=400)
 
-    for txn in block["txns"]:
-        if txn["sender"] != "COINFACTORY":
-            if txn not in blockchain.fisrt_txn_block:
-                return Response("Invalid txn!", status=400)
+        for txn in block["txns"]:
+            if txn["sender"] != "COINFACTORY":
+                if txn not in blockchain.fisrt_txn_block:
+                    return Response("Invalid txn!", status=400)
 
-        for element in txn["outputs"]:
-            if type(element) == dict:
-                if element["recipient"] not in blockchain.utxo:
-                    blockchain.utxo[element["recipient"]] = [ [element["amount"], block["index"], txn["hash"]] ]
-                else:
-                    blockchain.utxo[element["recipient"]].append([element["amount"], block["index"], txn["hash"]])
+            for element in txn["outputs"]:
+                if type(element) == dict:
+                    if element["recipient"] not in blockchain.utxo:
+                        blockchain.utxo[element["recipient"]] = [ [element["amount"], block["index"], txn["hash"]] ]
+                    else:
+                        blockchain.utxo[element["recipient"]].append([element["amount"], block["index"], txn["hash"]])
 
-    blockchain.new_block(block)
+        blockchain.new_block(block)
 
-    if (blockchain.last_block["index"]) % 5 == 0:
-        blockchain.difficulty = Blockchain.difficulty_recalculation(blockchain.chain, blockchain.scaler, blockchain.difficulty, 5)
+        if not blockchain.del_fisrt_txn_block():
+            return Response("Something broke... Change node", status=500)
+            ###############################
 
-    if not blockchain.del_fisrt_txn_block():
-        return Response("Something broke... Change node", status=500)
-        ###############################
+        if (block["index"]) % 5 == 0:
+            blockchain.difficulty = Blockchain.difficulty_recalculation(blockchain.chain, blockchain.scaler, blockchain.difficulty, 5)
 
-    blockchain.save()
-    nodes.send_block(block, node)
+        blockchain.save()
+        nodes.send_block(block, node)
 
-    return Response("OK", status=200)
+        return Response("OK", status=200)
 
 @app.route('/get_blockchain', methods=['GET'])
 def get_blockchain():
