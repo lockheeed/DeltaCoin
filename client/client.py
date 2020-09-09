@@ -7,17 +7,17 @@ from random import choice
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.9"
+__version__ = "BETA 2.0"
 
 banner = f"""
-  /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
- | $$__  $$| $$_____/| $$   |__  $$__//$$__  $$       /$$__  $$          |__/
- | $$  \ $$| $$      | $$      | $$  | $$  \ $$      | $$  \__/  /$$$$$$  /$$ /$$$$$$$
- | $$  | $$| $$$$$   | $$      | $$  | $$$$$$$$      | $$       /$$__  $$| $$| $$__  $$
- | $$  | $$| $$__/   | $$      | $$  | $$__  $$      | $$      | $$  \ $$| $$| $$  \ $$
- | $$  | $$| $$      | $$      | $$  | $$  | $$      | $$    $$| $$  | $$| $$| $$  | $$
- | $$$$$$$/| $$$$$$$$| $$$$$$$$| $$  | $$  | $$      |  $$$$$$/|  $$$$$$/| $$| $$  | $$
- |_______/ |________/|________/|__/  |__/  |__/       \______/  \______/ |__/|__/  |__/
+ /$$$$$$$$ /$$                        /$$$$$$   /$$$$$$  /$$$$$$ /$$   /$$
+|__  $$__/| $$                       /$$__  $$ /$$__  $$|_  $$_/| $$$ | $$
+   | $$   | $$$$$$$   /$$$$$$       | $$  \__/| $$  \ $$  | $$  | $$$$| $$
+   | $$   | $$__  $$ /$$__  $$      | $$      | $$  | $$  | $$  | $$ $$ $$
+   | $$   | $$  \ $$| $$$$$$$$      | $$      | $$  | $$  | $$  | $$  $$$$
+   | $$   | $$  | $$| $$_____/      | $$    $$| $$  | $$  | $$  | $$\  $$$
+   | $$   | $$  | $$|  $$$$$$$      |  $$$$$$/|  $$$$$$/ /$$$$$$| $$ \  $$
+   |__/   |__/  |__/ \_______/       \______/  \______/ |______/|__/  \__/
  [ * ] Version: {__version__}
 """
 
@@ -45,7 +45,7 @@ class Updater(object):
     @staticmethod
     def update():
         print(Color.bold + " [ ~ ] Checking for updates...", end="", flush=True)
-        url = "https://raw.githubusercontent.com/lockheeed/DeltaCoin/master/version"
+        url = "https://raw.githubusercontent.com/lockheeed/TheCoin/master/version"
         try:
             if requests.get(url, timeout=7).text.strip() == __version__:
                 print(Color.f_g + "UP TO DATE" + Color.clear)
@@ -59,34 +59,53 @@ class Updater(object):
             print(Color.f_r + "OFFLINE" + Color.clear)
             exit()
 
-class DeltaCoin():
+class TheCoin_Wallet():
     def __init__(self):
         self.curve = NIST521p
         self.hash = hashlib.sha512
 
-    def generate_wallet(self):
+    @staticmethod
+    def generate_wallet():
         seed = os.urandom(self.curve.baselen)
         secexp = randrange_from_seed__trytryagain(seed, self.curve.order)
         priv = SigningKey.from_secret_exponent(secexp, curve=self.curve, hashfunc=self.hash)
         pub = priv.get_verifying_key()
         return self.key_to_string(pub), self.key_to_string(priv), self.pub_to_address(self.key_to_string(pub))
 
-    def key_to_string(self, key):
+    @staticmethod
+    def key_to_string(key):
         return key.to_string().hex()
 
-    def pub_to_address(self, key):
+    @staticmethod
+    def pub_to_address(key):
         key_hash = b"\x0e" + hashlib.sha224(hashlib.sha512(key.encode("utf-8")).digest()).digest()
         check_sum = hashlib.sha256(key_hash).digest()[0:4]
         address = base58.b58encode(key_hash + check_sum)
         return address.decode("utf-8")
 
-    def string_to_pub(self, pub):
+    @staticmethod
+    def string_to_pub(pub):
         return VerifyingKey.from_string(bytearray.fromhex(pub), curve=self.curve)
 
-    def string_to_priv(self, priv):
+    @staticmethod
+    def string_to_priv(priv):
         return SigningKey.from_string(bytearray.fromhex(priv), curve=self.curve)
 
-    def txn_hash(self, sender, outputs, inputs, public):
+    @staticmethod
+    def is_a_valid_address(address):
+        if type(address) == str:
+            if len(address) == 45 and address[:1] == "5" and len([symbol for symbol in address if symbol not in "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]) == 0:
+                return True
+            else:
+                return False
+        elif type(address) == dict:
+            for addr in address:
+                if len(address) != 45 or address[:1] != "5" or len([symbol for symbol in address if symbol not in "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]) > 0:
+                    return False
+            return True
+
+    @staticmethod
+    def txn_hash(sender, outputs, inputs, public):
         return hashlib.sha256(bytes(sender + str(outputs) + json.dumps(inputs, sort_keys=True) + public, "utf-8")).hexdigest()
 
 class Node(object):
@@ -99,7 +118,7 @@ class Node(object):
             outputs = [{"amount":amount_with_fee, "recipient":recipient}, {"amount":return_value, "recipient":sender}, fee]
         else:
             outputs = [{"amount":amount_with_fee, "recipient":recipient}, fee]
-        hash = DeltaCoin().txn_hash(sender, outputs, inputs, public)
+        hash = TheCoin_Wallet().txn_hash(sender, outputs, inputs, public)
 
         data = {
             "sender":sender,
@@ -107,7 +126,7 @@ class Node(object):
             "inputs":inputs,
             "public":public,
             "hash":hash,
-            "sign":DeltaCoin().string_to_priv(private).sign(hash.encode("utf-8")).hex()
+            "sign":TheCoin_Wallet().string_to_priv(private).sign(hash.encode("utf-8")).hex()
                }
 
         try:
@@ -118,9 +137,9 @@ class Node(object):
                 return self.send_transaction(sender, recipient, amount_with_fee, return_value, fee, inputs, public, private)
 
         if response.status_code == 200:
-            print("\n [ + ] Transaction has been sent successfully!")
+            print(Color.f_g + "\n [ + ] Transaction has been sent successfully!" + Color.clear)
         else:
-            print("\n [ + ] Something went wrong! " + response.text)
+            print(Color.f_r + "\n [ - ] Something went wrong! " + response.text + Color.clear)
 
     def get_balance(self, address):
         try:
@@ -198,7 +217,8 @@ class Node(object):
                 self.nodes = json.load(f)["nodes"]
                 f.close()
         else:
-            self.nodes = {}
+            print(Color.f_r + " [ ! ] File 'cache/nodes.json' doesn't exist! Reload repository!" + Color.clear)
+            exit()
 
 if __name__ == '__main__':
     if platform.system() == "Windows":
@@ -211,35 +231,58 @@ if __name__ == '__main__':
     node = Node()
 
     while True:
-        command = str(input(" >> "))
         try:
-            if command == "new":
-                pub, priv, addr = DeltaCoin().generate_wallet()
-                print(f"\n ... Your wallet is ready ...\n [ * ] Addres: {addr}\n\n [ * ] Public Key: {pub}\n [ * ] Private Key: {priv}")
+            command = str(input(" >> ")).lower().strip()
+            try:
+                if command == "help":
+                    out = """\n [ * ] Available command:
+    \t new - create new TheCoin wallet
+    \t send - create transaction (send coins)
+    \t balance - check balance by TheCoin address"""
+                    print(out)
 
-            elif command == "send":
-                sender = str(input(" [ * ] Sender: "))
-                public = str(input(" [ * ] Public Key: "))
-                private = str(input(" [ * ] Private Key: "))
-                recipient = str(input("\n [ * ] Recipient: "))
-                amount = float(input(" [ * ] Amount: "))
+                elif command == "new":
+                    pub, priv, addr = TheCoin_Wallet().generate_wallet()
+                    print(f"\n ... Your wallet is ready ...\n [ * ] Addres: {addr}\n\n [ * ] Public Key: {pub}\n [ * ] Private Key: {priv}")
 
-                inputs, sum = node.get_inputs_for_txn(sender, int(amount))
-                fee = round(amount / 100, 4)
-                amount_with_fee = amount - fee
-                return_value = sum - amount
+                elif command == "send":
+                    sender = str(input(" [ * ] Sender TheCoin address: ")).replace(" ", "")
+                    if not TheCoin_Wallet.is_a_valid_address(sender):
+                        print(Color.f_r + " [ ! ] Invalid address format! Is it TheCoin address?\n" + Color.clear)
+                        continue
 
-                if sum < amount:
-                    print("\n [ - ] Извините, но кажется вы БОМЖАРИК!")
-                    continue
+                    public = str(input(" [ * ] Public Key: "))
+                    private = str(input(" [ * ] Private Key: "))
+                    recipient = str(input("\n [ * ] Recipient: ")).replace(" ", "")
+                    if not TheCoin_Wallet.is_a_valid_address(recipient):
+                        print(Color.f_r + " [ ! ] Invalid address format! Is it TheCoin address?\n" + Color.clear)
+                        continue
 
-                node.send_transaction(sender, recipient, amount_with_fee, return_value, fee, inputs, public, private)
+                    amount = float(input(" [ * ] Amount: "))
 
-            elif command == "balance":
-                address = str(input(" [ * ] DeltaCoin address: "))
-                balance = node.get_balance(address)
-                print(f" [ * ] Current balance is {str(balance)} D$")
+                    inputs, sum = node.get_inputs_for_txn(sender, int(amount))
+                    fee = round(amount / 100, 4)
+                    amount_with_fee = amount - fee
+                    return_value = sum - amount
+
+                    if sum < amount:
+                        print(Color.f_r + "\n [ - ] You don't have enough coins for this transaction!" + Color.clear)
+                        continue
+
+                    node.send_transaction(sender, recipient, amount_with_fee, return_value, fee, inputs, public, private)
+
+                elif command == "balance":
+                    address = str(input(" [ * ] TheCoin address: "))
+                    balance = node.get_balance(address)
+                    print(f" [ * ] Current balance is {Color.f_g + str(balance) + Color.clear} TC")
+
+                else:
+                    print(Color.f_r + "\n [ ! ] Invalid command! Type 'help' for display available commands.\n" + Color.clear)
+
+            except KeyboardInterrupt:
+                print(" ")
+                pass
 
         except KeyboardInterrupt:
-            print(" ")
-            pass
+            print(Color.f_r + " \n\n[ ! ] Keyboard Interrupt!" + Color.clear)
+            exit()

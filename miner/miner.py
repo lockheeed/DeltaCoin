@@ -9,17 +9,17 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 1.9"
+__version__ = "BETA 2.0"
 
 banner = f"""
-  /$$$$$$$  /$$$$$$$$ /$$    /$$$$$$$$ /$$$$$$         /$$$$$$            /$$
- | $$__  $$| $$_____/| $$   |__  $$__//$$__  $$       /$$__  $$          |__/
- | $$  \ $$| $$      | $$      | $$  | $$  \ $$      | $$  \__/  /$$$$$$  /$$ /$$$$$$$
- | $$  | $$| $$$$$   | $$      | $$  | $$$$$$$$      | $$       /$$__  $$| $$| $$__  $$
- | $$  | $$| $$__/   | $$      | $$  | $$__  $$      | $$      | $$  \ $$| $$| $$  \ $$
- | $$  | $$| $$      | $$      | $$  | $$  | $$      | $$    $$| $$  | $$| $$| $$  | $$
- | $$$$$$$/| $$$$$$$$| $$$$$$$$| $$  | $$  | $$      |  $$$$$$/|  $$$$$$/| $$| $$  | $$
- |_______/ |________/|________/|__/  |__/  |__/       \______/  \______/ |__/|__/  |__/
+ /$$$$$$$$ /$$                        /$$$$$$   /$$$$$$  /$$$$$$ /$$   /$$
+|__  $$__/| $$                       /$$__  $$ /$$__  $$|_  $$_/| $$$ | $$
+   | $$   | $$$$$$$   /$$$$$$       | $$  \__/| $$  \ $$  | $$  | $$$$| $$
+   | $$   | $$__  $$ /$$__  $$      | $$      | $$  | $$  | $$  | $$ $$ $$
+   | $$   | $$  \ $$| $$$$$$$$      | $$      | $$  | $$  | $$  | $$  $$$$
+   | $$   | $$  | $$| $$_____/      | $$    $$| $$  | $$  | $$  | $$\  $$$
+   | $$   | $$  | $$|  $$$$$$$      |  $$$$$$/|  $$$$$$/ /$$$$$$| $$ \  $$
+   |__/   |__/  |__/ \_______/       \______/  \______/ |______/|__/  \__/
  [ * ] Version: {__version__}
 """
 
@@ -67,7 +67,7 @@ class Updater(object):
     @staticmethod
     def update():
         print(Color.bold + " [ ~ ] Checking for updates...", end="", flush=True)
-        url = "https://raw.githubusercontent.com/lockheeed/DeltaCoin/master/version"
+        url = "https://raw.githubusercontent.com/lockheeed/TheCoin/master/version"
         try:
             if requests.get(url, timeout=7).text.strip() == __version__:
                 print(Color.f_g + "UP TO DATE" + Color.clear)
@@ -81,32 +81,51 @@ class Updater(object):
             print(Color.f_r + "OFFLINE" + Color.clear)
             exit()
 
-class DeltaCoin_Wallet():
+class TheCoin_Wallet():
     def __init__(self):
         self.curve = NIST521p
         self.hash = hashlib.sha512
 
-    def generate_wallet(self):
+    @staticmethod
+    def generate_wallet():
         seed = os.urandom(self.curve.baselen)
         secexp = randrange_from_seed__trytryagain(seed, self.curve.order)
         priv = SigningKey.from_secret_exponent(secexp, curve=self.curve, hashfunc=self.hash)
         pub = priv.get_verifying_key()
         return self.key_to_string(pub), self.key_to_string(priv), self.pub_to_address(self.key_to_string(pub))
 
-    def key_to_string(self, key):
+    @staticmethod
+    def key_to_string(key):
         return key.to_string().hex()
 
-    def pub_to_address(self, key):
+    @staticmethod
+    def pub_to_address(key):
         key_hash = b"\x0e" + hashlib.sha224(hashlib.sha512(key.encode("utf-8")).digest()).digest()
         check_sum = hashlib.sha256(key_hash).digest()[0:4]
         address = base58.b58encode(key_hash + check_sum)
         return address.decode("utf-8")
 
-    def string_to_pub(self, pub):
+    @staticmethod
+    def string_to_pub(pub):
         return VerifyingKey.from_string(bytearray.fromhex(pub), curve=self.curve)
 
-    def string_to_priv(self, priv):
+    @staticmethod
+    def string_to_priv(priv):
         return SigningKey.from_string(bytearray.fromhex(priv), curve=self.curve)
+
+    @staticmethod
+    def is_a_valid_address(address):
+        if type(address) == str:
+            if len(address) == 45 and address[:1] == "5" and len([symbol for symbol in address if symbol not in "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]) == 0:
+                return True
+            else:
+                return False
+        elif type(address) == dict:
+            for addr in address:
+                if len(address) != 45 or address[:1] != "5" or len([symbol for symbol in address if symbol not in "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]) > 0:
+                    return False
+            return True
+
 
 class Blockchain(object):
     def __init__(self, nodes = None):
@@ -227,14 +246,14 @@ class Blockchain(object):
                 for proc in processes_list:
                     proc.terminate()
                 return False
-
             if data == 1:
                 self.block["proof"] += 300 * self.cores_count
             else:
                 self.block["proof"] = int(data.split("/")[0])
                 self.block["hash"] = data.split("/")[1]
-                self.pow_in_work = False
                 break
+
+        self.pow_in_work = False
 
         for proc in processes_list:
             proc.terminate()
@@ -313,6 +332,14 @@ class Blockchain(object):
         return difficulty
 
     @staticmethod
+    def parse_addresses_from_txn(txn):
+        addresses = []
+        addresses.append(txn["sender"])
+        for element in txn["outputs"]:
+            if type(out) == dict:
+                addresses.append(element["recipient"])
+
+    @staticmethod
     def txn_hash(sender, outputs, inputs, public):
         return hashlib.sha256(bytes(sender + str(outputs) + json.dumps(inputs, sort_keys=True) + public, "utf-8")).hexdigest()
 
@@ -323,9 +350,10 @@ class Blockchain(object):
     @staticmethod
     def is_a_valid_txn(txn, utxo):
         actual_hash = Blockchain.txn_hash(txn["sender"], txn["outputs"],  txn["inputs"],  txn["public"])
-        if DeltaCoin_Wallet().pub_to_address(txn["public"]) == txn["sender"] and txn["hash"] == actual_hash and \
-        DeltaCoin_Wallet().string_to_pub(txn["public"]).verify(bytearray.fromhex(txn["sign"]), txn["hash"].encode("utf-8")) and \
-        Blockchain.get_sum_of_inputs(txn["inputs"], txn["sender"], utxo) >= Blockchain.get_sum_of_outputs(txn["outputs"]):
+        if TheCoin_Wallet().pub_to_address(txn["public"]) == txn["sender"] and txn["hash"] == actual_hash and \
+        TheCoin_Wallet().string_to_pub(txn["public"]).verify(bytearray.fromhex(txn["sign"]), txn["hash"].encode("utf-8")) and \
+        Blockchain.get_sum_of_inputs(txn["inputs"], txn["sender"], utxo) >= Blockchain.get_sum_of_outputs(txn["outputs"]) and \
+        TheCoin_Wallet.is_a_valid_address(Blockchain.parse_addresses_from_txn(txn)):
             return True
         else:
             return False
@@ -567,7 +595,8 @@ class Nodes(object):
                 self.nodes = json.load(f)["nodes"]
                 f.close()
         else:
-            self.nodes = {}
+            print(Color.f_r + " [ ! ] File 'cache/nodes.json' doesn't exist! Reload repository!" + Color.clear)
+            exit()
 
 if __name__ == '__main__':
     if platform.system() == "Windows":
@@ -583,7 +612,12 @@ if __name__ == '__main__':
     blockchain.sync_blockchain()
     blockchain.start_threads()
 
-    miner_address = input(" [ * ] Enter your DeltaCoin address: ")
+    miner_address = input(" [ * ] Enter your TheCoin address: ").replace(" ", "")
+    while not TheCoin_Wallet.is_a_valid_address(miner_address):
+        print(Color.f_r + " [ ! ] Invalid address format! Is it TheCoin address?\n" + Color.clear)
+        miner_address = input(" [ * ] Enter your TheCoin address: ").replace(" ", "")
+        continue
+
     blockchain.set_cores_count()
 
     print(" ")
