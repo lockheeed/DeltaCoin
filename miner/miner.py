@@ -9,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 2.1"
+__version__ = "BETA 2.1.1"
 
 banner = f"""
  /$$$$$$$$ /$$                        /$$$$$$   /$$$$$$  /$$$$$$ /$$   /$$
@@ -333,7 +333,7 @@ class Blockchain(object):
         addresses = []
         addresses.append(txn["sender"])
         for element in txn["outputs"]:
-            if type(out) == dict:
+            if type(element) == dict:
                 addresses.append(element["recipient"])
 
     @staticmethod
