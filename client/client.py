@@ -7,7 +7,7 @@ from random import choice
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 2.0"
+__version__ = "BETA 2.1"
 
 banner = f"""
  /$$$$$$$$ /$$                        /$$$$$$   /$$$$$$  /$$$$$$ /$$   /$$
@@ -64,8 +64,7 @@ class TheCoin_Wallet():
         self.curve = NIST521p
         self.hash = hashlib.sha512
 
-    @staticmethod
-    def generate_wallet():
+    def generate_wallet(self):
         seed = os.urandom(self.curve.baselen)
         secexp = randrange_from_seed__trytryagain(seed, self.curve.order)
         priv = SigningKey.from_secret_exponent(secexp, curve=self.curve, hashfunc=self.hash)
@@ -83,12 +82,10 @@ class TheCoin_Wallet():
         address = base58.b58encode(key_hash + check_sum)
         return address.decode("utf-8")
 
-    @staticmethod
-    def string_to_pub(pub):
+    def string_to_pub(self, pub):
         return VerifyingKey.from_string(bytearray.fromhex(pub), curve=self.curve)
 
-    @staticmethod
-    def string_to_priv(priv):
+    def string_to_priv(self, priv):
         return SigningKey.from_string(bytearray.fromhex(priv), curve=self.curve)
 
     @staticmethod
@@ -272,7 +269,11 @@ if __name__ == '__main__':
                     node.send_transaction(sender, recipient, amount_with_fee, return_value, fee, inputs, public, private)
 
                 elif command == "balance":
-                    address = str(input(" [ * ] TheCoin address: "))
+                    address = str(input(" [ * ] TheCoin address: ")).replace(" ", "")
+                    if not TheCoin_Wallet.is_a_valid_address(address):
+                        print(Color.f_r + " [ ! ] Invalid address format! Is it TheCoin address?\n" + Color.clear)
+                        continue
+
                     balance = node.get_balance(address)
                     print(f" [ * ] Current balance is {Color.f_g + str(balance) + Color.clear} TC")
 
