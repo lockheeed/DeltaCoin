@@ -9,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 2.1.2"
+__version__ = "BETA 2.1.3"
 
 banner = f"""
  /$$$$$$$$ /$$                        /$$$$$$   /$$$$$$  /$$$$$$ /$$   /$$
@@ -117,7 +117,7 @@ class TheCoin_Wallet():
                 return True
             else:
                 return False
-        elif type(address) == dict:
+        elif type(address) == list:
             for addr in address:
                 if len(addr) != 45 or addr[:1] != "5" or len([symbol for symbol in addr if symbol not in "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]) > 0:
                     return False
@@ -232,6 +232,7 @@ class Blockchain(object):
         for element in txn["outputs"]:
             if type(element) == dict:
                 addresses.append(element["recipient"])
+        return addresses
 
     @staticmethod
     def txn_hash(sender, outputs, inputs, public):
