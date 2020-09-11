@@ -9,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 2.1.1"
+__version__ = "BETA 2.1.2"
 
 banner = f"""
  /$$$$$$$$ /$$                        /$$$$$$   /$$$$$$  /$$$$$$ /$$   /$$
@@ -119,7 +119,7 @@ class TheCoin_Wallet():
                 return False
         elif type(address) == dict:
             for addr in address:
-                if len(address) != 45 or address[:1] != "5" or len([symbol for symbol in address if symbol not in "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]) > 0:
+                if len(addr) != 45 or addr[:1] != "5" or len([symbol for symbol in addr if symbol not in "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]) > 0:
                     return False
             return True
 
