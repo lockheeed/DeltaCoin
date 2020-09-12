@@ -2,6 +2,7 @@
 The most accurate model of crypto money
 
 <hr/>
+
 # 🤔 How to install this? 🤔 <br>
 ## If I'm using <br>
 ### Linux: <br>
