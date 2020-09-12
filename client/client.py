@@ -7,7 +7,7 @@ from random import choice
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 2.1.4"
+__version__ = "BETA 2.1.5"
 
 banner = f"""
  /$$$$$$$$ /$$                        /$$$$$$   /$$$$$$  /$$$$$$ /$$   /$$
@@ -20,6 +20,10 @@ banner = f"""
    |__/   |__/  |__/ \_______/       \______/  \______/ |______/|__/  \__/
  [ * ] Version: {__version__}
 """
+
+def truncate(n, decimals=0):
+    multiplier = 10 ** decimals
+    return int(n * multiplier) / multiplier
 
 class Color(object):
     clear = "\x1b[0m"
@@ -258,9 +262,9 @@ if __name__ == '__main__':
                     amount = float(input(" [ * ] Amount: "))
 
                     inputs, sum = node.get_inputs_for_txn(sender, int(amount))
-                    fee = round(amount / 100, 4)
-                    amount_with_fee = amount - fee
-                    return_value = sum - amount
+                    fee = truncate(amount / 100, 6)
+                    amount_with_fee = truncate(amount - fee, 6)
+                    return_value = truncate(sum - amount, 6)
 
                     if sum < amount:
                         print(Color.f_r + "\n [ - ] You don't have enough coins for this transaction!" + Color.clear)
