@@ -9,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 2.1.3"
+__version__ = "BETA 2.1.4"
 
 banner = f"""
  /$$$$$$$$ /$$                        /$$$$$$   /$$$$$$  /$$$$$$ /$$   /$$
@@ -160,7 +160,7 @@ class Blockchain(object):
                     self.difficulty = 0
 
                     self.make_genesis_block()
-                    self.make_dummy_txn_blocks(50)
+                    self.make_dummy_txn_blocks(10)
                     print(Color.f_g + "SUCCESSFUL" + Color.clear)
                 else:
                     exit()
@@ -195,10 +195,10 @@ class Blockchain(object):
         self.not_distributed_txns.append(txn)
         for inp in txn["inputs"]:
             del self.utxo[txn["sender"]][self.utxo[txn["sender"]].index(inp)]
-
         for inputs, address in self.utxo.copy().items():
             if len(inputs) == 0:
                 del self.utxo[txn["sender"]]
+        self.save()
 
     def new_block(self, block):
         self.chain.append(block)
@@ -239,7 +239,7 @@ class Blockchain(object):
         return hashlib.sha256(bytes(sender + str(outputs) + json.dumps(inputs, sort_keys=True) + public, "utf-8")).hexdigest()
 
     @staticmethod
-    def gen_target(difficulty, place_size = 12, init_zeros_count = 6):
+    def gen_target(difficulty, place_size = 12, init_zeros_count = 1):
         if difficulty > 10 * place_size:
             difficulty = 10 * place_size
 
@@ -424,13 +424,10 @@ class Blockchain(object):
     def __distributor(self):
         while True:
             if len(self.not_distributed_txns):
-                if len(self.txn_blocks) > 0:
-                    k = int(len(self.not_distributed_txns) / (len(self.txn_blocks) - 0.5 ))
-                else:
-                    k = len(self.not_distributed_txns)
-                if k > 0:
-                    self.new_txn_block(k)
-            time.sleep(3)
+                k = len(self.txn_blocks) + 1
+                if k <= len(self.not_distributed_txns) and k > 0:
+                    self.new_txn_block(len(self.not_distributed_txns))
+            time.sleep(5)
 
     def save(self):
         try:
