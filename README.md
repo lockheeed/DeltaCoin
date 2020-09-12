@@ -3,9 +3,12 @@ The most accurate model of crypto money
 
 <hr/>
 
-# 🤔 How to install this? 🤔 <br>
-## If I'm using <br>
-### Linux: <br>
+# 🤔 How to install this? 🤔
+
+## If I'm using
+
+### 👉 Linux:
+
 '''bash
 apt update && apt upgrade
 apt-get install git python3 python3-pip
