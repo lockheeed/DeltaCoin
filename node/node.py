@@ -9,7 +9,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa import NIST521p
 from ecdsa.util import randrange_from_seed__trytryagain
 
-__version__ = "BETA 2.1.5"
+__version__ = "BETA 2.1.51"
 
 banner = f"""
  /$$$$$$$$ /$$                        /$$$$$$   /$$$$$$  /$$$$$$ /$$   /$$
@@ -160,7 +160,7 @@ class Blockchain(object):
                     self.difficulty = 0
 
                     self.make_genesis_block()
-                    self.make_dummy_txn_blocks(10)
+                    self.make_dummy_txn_blocks(50)
                     print(Color.f_g + "SUCCESSFUL" + Color.clear)
                 else:
                     exit()
@@ -239,7 +239,7 @@ class Blockchain(object):
         return hashlib.sha256(bytes(sender + str(outputs) + json.dumps(inputs, sort_keys=True) + public, "utf-8")).hexdigest()
 
     @staticmethod
-    def gen_target(difficulty, place_size = 12, init_zeros_count = 1):
+    def gen_target(difficulty, place_size = 12, init_zeros_count = 6):
         if difficulty > 10 * place_size:
             difficulty = 10 * place_size
 
