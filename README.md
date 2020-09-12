@@ -5,11 +5,9 @@ The most accurate model of crypto money
 
 # 🤔 How to install this? 🤔
 
-## If I'm using
+### 👉 For Linux:
 
-### 👉 Linux:
-
-'''bash
+'''shell
 apt update && apt upgrade
 apt-get install git python3 python3-pip
 git clone https://github.com/locheeed/TheCoin
